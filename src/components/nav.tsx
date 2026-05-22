@@ -1,12 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Moon, Sun, Utensils, ChefHat, Store, LayoutDashboard, Home } from "lucide-react";
+import { Moon, Sun, Utensils, ClipboardList, Store, LayoutDashboard, Home, Tag, Users } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 const links = [
   { to: "/", label: "Inicio", icon: Home },
   { to: "/caja", label: "Caja", icon: Store },
-  { to: "/cocina", label: "Cocina", icon: ChefHat },
+  { to: "/pedidos", label: "Pedidos", icon: ClipboardList },
+  { to: "/promociones", label: "Promociones", icon: Tag },
+  { to: "/empleados", label: "Empleados", icon: Users },
   { to: "/admin", label: "Admin", icon: LayoutDashboard },
 ];
 

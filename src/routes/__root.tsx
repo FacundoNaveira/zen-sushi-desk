@@ -13,6 +13,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { StoreProvider } from "@/lib/store";
 import { Nav } from "@/components/nav";
 import { Toaster } from "@/components/ui/sonner";
+import { ChatbotWidget } from "@/components/chatbot-widget";
 
 function NotFoundComponent() {
   return (
@@ -101,6 +102,7 @@ function RootComponent() {
         <StoreProvider>
           <Nav />
           <Outlet />
+          <ChatbotWidget />
           <Toaster richColors position="top-right" />
         </StoreProvider>
       </ThemeProvider>

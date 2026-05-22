@@ -9,14 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as CocinaRouteImport } from './routes/cocina'
+import { Route as PromocionesRouteImport } from './routes/promociones'
+import { Route as PedidosRouteImport } from './routes/pedidos'
+import { Route as EmpleadosRouteImport } from './routes/empleados'
 import { Route as CajaRouteImport } from './routes/caja'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
-const CocinaRoute = CocinaRouteImport.update({
-  id: '/cocina',
-  path: '/cocina',
+const PromocionesRoute = PromocionesRouteImport.update({
+  id: '/promociones',
+  path: '/promociones',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PedidosRoute = PedidosRouteImport.update({
+  id: '/pedidos',
+  path: '/pedidos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpleadosRoute = EmpleadosRouteImport.update({
+  id: '/empleados',
+  path: '/empleados',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CajaRoute = CajaRouteImport.update({
@@ -39,43 +51,78 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/caja': typeof CajaRoute
-  '/cocina': typeof CocinaRoute
+  '/empleados': typeof EmpleadosRoute
+  '/pedidos': typeof PedidosRoute
+  '/promociones': typeof PromocionesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/caja': typeof CajaRoute
-  '/cocina': typeof CocinaRoute
+  '/empleados': typeof EmpleadosRoute
+  '/pedidos': typeof PedidosRoute
+  '/promociones': typeof PromocionesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/caja': typeof CajaRoute
-  '/cocina': typeof CocinaRoute
+  '/empleados': typeof EmpleadosRoute
+  '/pedidos': typeof PedidosRoute
+  '/promociones': typeof PromocionesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/caja' | '/cocina'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/caja'
+    | '/empleados'
+    | '/pedidos'
+    | '/promociones'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/caja' | '/cocina'
-  id: '__root__' | '/' | '/admin' | '/caja' | '/cocina'
+  to: '/' | '/admin' | '/caja' | '/empleados' | '/pedidos' | '/promociones'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/caja'
+    | '/empleados'
+    | '/pedidos'
+    | '/promociones'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   CajaRoute: typeof CajaRoute
-  CocinaRoute: typeof CocinaRoute
+  EmpleadosRoute: typeof EmpleadosRoute
+  PedidosRoute: typeof PedidosRoute
+  PromocionesRoute: typeof PromocionesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/cocina': {
-      id: '/cocina'
-      path: '/cocina'
-      fullPath: '/cocina'
-      preLoaderRoute: typeof CocinaRouteImport
+    '/promociones': {
+      id: '/promociones'
+      path: '/promociones'
+      fullPath: '/promociones'
+      preLoaderRoute: typeof PromocionesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pedidos': {
+      id: '/pedidos'
+      path: '/pedidos'
+      fullPath: '/pedidos'
+      preLoaderRoute: typeof PedidosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empleados': {
+      id: '/empleados'
+      path: '/empleados'
+      fullPath: '/empleados'
+      preLoaderRoute: typeof EmpleadosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/caja': {
@@ -106,8 +153,20 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   CajaRoute: CajaRoute,
-  CocinaRoute: CocinaRoute,
+  EmpleadosRoute: EmpleadosRoute,
+  PedidosRoute: PedidosRoute,
+  PromocionesRoute: PromocionesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

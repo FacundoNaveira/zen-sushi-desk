@@ -1,80 +1,101 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Trash2, LogIn, LogOut, Clock, Calendar, User } from "lucide-react";
+import { LogIn, LogOut, Clock, User, Plus, Minus, ClipboardList, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { AppLayout } from "@/components/app-layout";
+import type { OrderItem, PaymentMethod } from "@/lib/types";
 
 export const Route = createFileRoute("/empleados")({
   component: EmpleadosPage,
   head: () => ({ meta: [{ title: "Empleados · Rosario Sushi" }] }),
 });
 
-interface AttendanceRecord {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  date: string;
-  checkIn: string | null;
-  checkOut: string | null;
-  status: "presente" | "ausente" | "turno_activo";
-}
-
-const INITIAL_ATTENDANCE: AttendanceRecord[] = [
-  {
-    id: "att1",
-    employeeId: "e1",
-    employeeName: "Lucia Fernandez",
-    date: new Date().toISOString().split("T")[0],
-    checkIn: "09:00",
-    checkOut: null,
-    status: "turno_activo",
-  },
-  {
-    id: "att2",
-    employeeId: "e2",
-    employeeName: "Mateo Rossi",
-    date: new Date().toISOString().split("T")[0],
-    checkIn: "10:30",
-    checkOut: null,
-    status: "turno_activo",
-  },
-  {
-    id: "att3",
-    employeeId: "e1",
-    employeeName: "Lucia Fernandez",
-    date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
-    checkIn: "09:15",
-    checkOut: "18:00",
-    status: "presente",
-  },
-  {
-    id: "att4",
-    employeeId: "e2",
-    employeeName: "Mateo Rossi",
-    date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
-    checkIn: "10:00",
-    checkOut: "19:30",
-    status: "presente",
-  },
-  {
-    id: "att5",
-    employeeId: "e3",
-    employeeName: "Camila Torres",
-    date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
-    checkIn: null,
-    checkOut: null,
-    status: "ausente",
-  },
+const SIDEBAR_ITEMS = [
+  { to: "/empleados", label: "Asistencia", icon: UserCheck },
+  { to: "/empleados/crear-pedido", label: "Crear Pedido", icon: ClipboardList },
 ];
 
 function EmpleadosPage() {
-  const { employees, addEmployee, removeEmployee, toggleCheckIn } = useStore();
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE);
-  const [newEmp, setNewEmp] = useState({ name: "", role: "Sushiman" });
+  const [activeSection, setActiveSection] = useState<"asistencia" | "crear-pedido">("asistencia");
+
+  return (
+    <AppLayout sidebarItems={SIDEBAR_ITEMS} title="Panel Empleados" subtitle="Personal">
+      <div className="flex h-[calc(100vh-3.5rem)]">
+        {/* Internal sidebar for sections */}
+        <div className="hidden w-56 flex-shrink-0 border-r border-border bg-card/50 p-4 md:block">
+          <nav className="space-y-1">
+            <button
+              onClick={() => setActiveSection("asistencia")}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                activeSection === "asistencia"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-accent"
+              )}
+            >
+              <UserCheck className="h-4 w-4" />
+              Asistencia
+            </button>
+            <button
+              onClick={() => setActiveSection("crear-pedido")}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                activeSection === "crear-pedido"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-accent"
+              )}
+            >
+              <ClipboardList className="h-4 w-4" />
+              Crear Pedido
+            </button>
+          </nav>
+        </div>
+
+        {/* Mobile tabs */}
+        <div className="flex flex-col w-full">
+          <div className="flex border-b border-border md:hidden">
+            <button
+              onClick={() => setActiveSection("asistencia")}
+              className={cn(
+                "flex-1 px-4 py-3 text-sm font-medium transition-colors",
+                activeSection === "asistencia"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground"
+              )}
+            >
+              Asistencia
+            </button>
+            <button
+              onClick={() => setActiveSection("crear-pedido")}
+              className={cn(
+                "flex-1 px-4 py-3 text-sm font-medium transition-colors",
+                activeSection === "crear-pedido"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground"
+              )}
+            >
+              Crear Pedido
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            {activeSection === "asistencia" ? <AsistenciaSection /> : <CrearPedidoSection />}
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}
+
+function AsistenciaSection() {
+  const { employees, attendance, recordAttendance } = useStore();
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
 
   const today = new Date().toISOString().split("T")[0];
+  const todayAttendance = attendance.filter((a) => a.date === today);
 
   const handleFicharLlegada = () => {
     if (!selectedEmployee) {
@@ -85,43 +106,14 @@ function EmpleadosPage() {
     const employee = employees.find((e) => e.id === selectedEmployee);
     if (!employee) return;
 
-    const existingRecord = attendance.find(
-      (a) => a.employeeId === selectedEmployee && a.date === today
-    );
-
+    const existingRecord = todayAttendance.find((a) => a.employeeId === selectedEmployee);
     if (existingRecord?.checkIn) {
-      toast.error("El empleado ya ficho llegada hoy");
+      toast.error("El empleado ya fichó llegada hoy");
       return;
     }
 
-    const now = new Date().toLocaleTimeString("es-AR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    if (existingRecord) {
-      setAttendance((prev) =>
-        prev.map((a) =>
-          a.id === existingRecord.id
-            ? { ...a, checkIn: now, status: "turno_activo" }
-            : a
-        )
-      );
-    } else {
-      const newRecord: AttendanceRecord = {
-        id: crypto.randomUUID(),
-        employeeId: selectedEmployee,
-        employeeName: employee.name,
-        date: today,
-        checkIn: now,
-        checkOut: null,
-        status: "turno_activo",
-      };
-      setAttendance((prev) => [newRecord, ...prev]);
-    }
-
-    toggleCheckIn(selectedEmployee);
-    toast.success(`${employee.name} ficho llegada a las ${now}`);
+    recordAttendance(selectedEmployee, "entrada");
+    toast.success(`${employee.name} fichó llegada`);
     setSelectedEmployee("");
   };
 
@@ -134,8 +126,8 @@ function EmpleadosPage() {
     const employee = employees.find((e) => e.id === selectedEmployee);
     if (!employee) return;
 
-    const existingRecord = attendance.find(
-      (a) => a.employeeId === selectedEmployee && a.date === today && a.checkIn && !a.checkOut
+    const existingRecord = todayAttendance.find(
+      (a) => a.employeeId === selectedEmployee && a.checkIn && !a.checkOut
     );
 
     if (!existingRecord) {
@@ -143,307 +135,322 @@ function EmpleadosPage() {
       return;
     }
 
-    const now = new Date().toLocaleTimeString("es-AR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    setAttendance((prev) =>
-      prev.map((a) =>
-        a.id === existingRecord.id
-          ? { ...a, checkOut: now, status: "presente" }
-          : a
-      )
-    );
-
-    toggleCheckIn(selectedEmployee);
-    toast.success(`${employee.name} ficho salida a las ${now}`);
+    recordAttendance(selectedEmployee, "salida");
+    toast.success(`${employee.name} fichó salida`);
     setSelectedEmployee("");
   };
 
-  const todayAttendance = attendance.filter((a) => a.date === today);
-  const pastAttendance = attendance.filter((a) => a.date !== today);
+  const selectedEmpData = employees.find((e) => e.id === selectedEmployee);
+  const selectedEmpAttendance = selectedEmployee
+    ? todayAttendance.find((a) => a.employeeId === selectedEmployee)
+    : null;
 
   return (
-    <main className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6">
+    <div className="max-w-4xl space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-bold">Empleados</h1>
+        <h1 className="font-display text-2xl font-bold">Control de Asistencia</h1>
         <p className="text-sm text-muted-foreground">
-          Gestion de empleados y control de asistencia
+          Ficha tu entrada y salida del turno
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Total Empleados
-          </div>
-          <div className="mt-1 font-display text-2xl font-bold">{employees.length}</div>
-        </div>
-        <div className="rounded-xl border border-success/30 bg-success/5 p-4">
-          <div className="text-xs font-medium uppercase tracking-wider text-success">
-            En Turno
-          </div>
-          <div className="mt-1 font-display text-2xl font-bold text-success">
-            {employees.filter((e) => e.checkedIn).length}
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Activos
-          </div>
-          <div className="mt-1 font-display text-2xl font-bold">
-            {employees.filter((e) => e.active).length}
-          </div>
-        </div>
-        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
-          <div className="text-xs font-medium uppercase tracking-wider text-warning">
-            Inactivos
-          </div>
-          <div className="mt-1 font-display text-2xl font-bold text-warning-foreground">
-            {employees.filter((e) => !e.active).length}
-          </div>
-        </div>
-      </div>
-
-      {/* Control de Asistencia */}
-      <section className="rounded-xl border border-border bg-card p-5">
+      {/* Selector de Empleado */}
+      <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-bold">
-          <Clock className="h-5 w-5 text-primary" />
-          Control de Horarios
+          <User className="h-5 w-5 text-primary" />
+          Seleccionar Empleado
         </h2>
 
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <label className="mb-1.5 block text-sm font-medium">Seleccionar Empleado</label>
-            <select
-              value={selectedEmployee}
-              onChange={(e) => setSelectedEmployee(e.target.value)}
-              className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"
-            >
-              <option value="">Selecciona un empleado...</option>
-              {employees
-                .filter((e) => e.active)
-                .map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.name} - {emp.role}
-                  </option>
-                ))}
-            </select>
-          </div>
+        <select
+          value={selectedEmployee}
+          onChange={(e) => setSelectedEmployee(e.target.value)}
+          className="h-12 w-full rounded-lg border border-border bg-background px-4 text-base"
+        >
+          <option value="">Selecciona tu nombre...</option>
+          {employees
+            .filter((e) => e.active)
+            .map((emp) => (
+              <option key={emp.id} value={emp.id}>
+                {emp.name} - {emp.role}
+              </option>
+            ))}
+        </select>
 
-          <button
-            onClick={handleFicharLlegada}
-            className="inline-flex h-11 items-center gap-2 rounded-lg bg-success px-5 font-semibold text-success-foreground transition-opacity hover:opacity-90"
-          >
-            <LogIn className="h-4 w-4" />
-            Fichar Llegada
-          </button>
-
-          <button
-            onClick={handleFicharSalida}
-            className="inline-flex h-11 items-center gap-2 rounded-lg bg-danger px-5 font-semibold text-danger-foreground transition-opacity hover:opacity-90"
-          >
-            <LogOut className="h-4 w-4" />
-            Fichar Salida
-          </button>
-        </div>
-
-        {/* Asistencia de Hoy */}
-        {todayAttendance.length > 0 && (
-          <div className="mt-6">
-            <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
-              Registros de Hoy ({new Date().toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long" })})
-            </h3>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {todayAttendance.map((record) => (
-                <div
-                  key={record.id}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg border p-3",
-                    record.status === "turno_activo"
-                      ? "border-success/40 bg-success/5"
-                      : record.status === "presente"
-                      ? "border-border bg-muted/50"
-                      : "border-danger/40 bg-danger/5"
-                  )}
-                >
-                  <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10">
-                    <User className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium">{record.employeeName}</div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {record.checkIn && <span>Entrada: {record.checkIn}</span>}
-                      {record.checkOut && <span>· Salida: {record.checkOut}</span>}
+        {/* Estado Actual del Empleado */}
+        {selectedEmpData && (
+          <div className="mt-4 rounded-lg border border-border bg-muted/50 p-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-full bg-primary/10">
+                <User className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <div className="font-semibold">{selectedEmpData.name}</div>
+                <div className="text-sm text-muted-foreground">{selectedEmpData.role}</div>
+              </div>
+              <div className="ml-auto text-right">
+                {selectedEmpAttendance?.checkIn && !selectedEmpAttendance?.checkOut ? (
+                  <>
+                    <div className="text-xs text-muted-foreground">Hora de llegada</div>
+                    <div className="font-display text-xl font-bold text-success">
+                      {selectedEmpAttendance.checkIn}
                     </div>
-                  </div>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-xs font-semibold",
-                      record.status === "turno_activo"
-                        ? "bg-success/20 text-success-foreground"
-                        : record.status === "presente"
-                        ? "bg-muted text-muted-foreground"
-                        : "bg-danger/20 text-danger-foreground"
-                    )}
-                  >
-                    {record.status === "turno_activo"
-                      ? "En turno"
-                      : record.status === "presente"
-                      ? "Completo"
-                      : "Ausente"}
-                  </span>
-                </div>
-              ))}
+                  </>
+                ) : selectedEmpAttendance?.checkOut ? (
+                  <>
+                    <div className="text-xs text-muted-foreground">Turno completado</div>
+                    <div className="text-sm">
+                      {selectedEmpAttendance.checkIn} - {selectedEmpAttendance.checkOut}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Sin fichaje hoy</div>
+                )}
+              </div>
             </div>
           </div>
         )}
       </section>
 
-      {/* Historial de Asistencia */}
-      <section className="rounded-xl border border-border bg-card p-5">
-        <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-bold">
-          <Calendar className="h-5 w-5 text-primary" />
-          Historial de Asistencia
-        </h2>
+      {/* Botones de Fichaje */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <button
+          onClick={handleFicharLlegada}
+          disabled={!selectedEmployee}
+          className="flex h-32 flex-col items-center justify-center gap-3 rounded-2xl bg-success text-success-foreground transition-all hover:opacity-90 disabled:opacity-50"
+        >
+          <LogIn className="h-10 w-10" />
+          <span className="text-xl font-bold">Fichar Entrada</span>
+        </button>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
-                <th className="py-2 pr-3">Empleado</th>
-                <th className="py-2 pr-3">Dia</th>
-                <th className="py-2 pr-3">Hora Ingreso</th>
-                <th className="py-2 pr-3">Hora Salida</th>
-                <th className="py-2 pr-3">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pastAttendance.map((record) => (
-                <tr key={record.id} className="border-b border-border last:border-0">
-                  <td className="py-3 pr-3 font-medium">{record.employeeName}</td>
-                  <td className="py-3 pr-3 text-muted-foreground">
-                    {new Date(record.date).toLocaleDateString("es-AR", {
-                      weekday: "short",
-                      day: "2-digit",
-                      month: "short",
-                    })}
-                  </td>
-                  <td className="py-3 pr-3">{record.checkIn || "-"}</td>
-                  <td className="py-3 pr-3">{record.checkOut || "-"}</td>
-                  <td className="py-3 pr-3">
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-semibold",
-                        record.status === "presente"
-                          ? "bg-success/20 text-success-foreground"
-                          : "bg-danger/20 text-danger-foreground"
-                      )}
-                    >
-                      {record.status === "presente" ? "Presente" : "Ausente"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {pastAttendance.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-muted-foreground">
-                    No hay registros anteriores
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <button
+          onClick={handleFicharSalida}
+          disabled={!selectedEmployee}
+          className="flex h-32 flex-col items-center justify-center gap-3 rounded-2xl bg-danger text-danger-foreground transition-all hover:opacity-90 disabled:opacity-50"
+        >
+          <LogOut className="h-10 w-10" />
+          <span className="text-xl font-bold">Fichar Salida</span>
+        </button>
+      </div>
 
-      {/* Lista de Empleados */}
-      <section className="rounded-xl border border-border bg-card p-5">
-        <h3 className="mb-4 font-display text-lg font-bold">Lista de Empleados</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
-                <th className="py-2 pr-3">Nombre</th>
-                <th className="py-2 pr-3">Rol</th>
-                <th className="py-2 pr-3">Estado</th>
-                <th className="py-2 pr-3">Turno</th>
-                <th className="py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((e) => (
-                <tr key={e.id} className="border-b border-border last:border-0">
-                  <td className="py-3 pr-3 font-medium">{e.name}</td>
-                  <td className="py-3 pr-3 text-muted-foreground">{e.role}</td>
-                  <td className="py-3 pr-3">
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-semibold",
-                        e.active
-                          ? "bg-success/20 text-success-foreground"
-                          : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {e.active ? "Activo" : "Inactivo"}
-                    </span>
-                  </td>
-                  <td className="py-3 pr-3 text-xs">
-                    {e.checkedIn ? (
-                      <span className="text-success">En turno</span>
-                    ) : (
-                      <span className="text-muted-foreground">Fuera</span>
-                    )}
-                  </td>
-                  <td className="py-3 text-right">
-                    <button
-                      onClick={() => removeEmployee(e.id)}
-                      className="grid h-8 w-8 place-items-center rounded-md text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-5 rounded-lg border border-dashed border-border p-4">
-          <div className="mb-2 text-sm font-semibold">Alta de empleado</div>
-          <div className="grid gap-2 sm:grid-cols-[2fr_1fr_auto]">
-            <input
-              placeholder="Nombre completo"
-              value={newEmp.name}
-              onChange={(e) => setNewEmp({ ...newEmp, name: e.target.value })}
-              className="h-10 rounded-md border border-border bg-background px-3"
-            />
-            <select
-              value={newEmp.role}
-              onChange={(e) => setNewEmp({ ...newEmp, role: e.target.value })}
-              className="h-10 rounded-md border border-border bg-background px-3"
-            >
-              <option>Sushiman</option>
-              <option>Caja</option>
-              <option>Cadete</option>
-              <option>Encargado</option>
-            </select>
-            <button
-              onClick={() => {
-                if (!newEmp.name) return toast.error("Nombre requerido");
-                addEmployee(newEmp.name, newEmp.role);
-                setNewEmp({ name: "", role: "Sushiman" });
-                toast.success("Empleado agregado");
-              }}
-              className="inline-flex h-10 items-center justify-center gap-1 rounded-md bg-primary px-4 font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4" /> Agregar
-            </button>
+      {/* Registros de Hoy */}
+      {todayAttendance.length > 0 && (
+        <section className="rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-bold">
+            <Clock className="h-5 w-5 text-primary" />
+            Registros de Hoy
+          </h3>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {todayAttendance.map((record) => (
+              <div
+                key={record.id}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg border p-3",
+                  record.status === "turno_activo"
+                    ? "border-success/40 bg-success/5"
+                    : record.status === "presente"
+                    ? "border-border bg-muted/50"
+                    : "border-danger/40 bg-danger/5"
+                )}
+              >
+                <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10">
+                  <User className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">{record.employeeName}</div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {record.checkIn && <span>Entrada: {record.checkIn}</span>}
+                    {record.checkOut && <span>· Salida: {record.checkOut}</span>}
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-xs font-semibold",
+                    record.status === "turno_activo"
+                      ? "bg-success/20 text-success"
+                      : record.status === "presente"
+                      ? "bg-muted text-muted-foreground"
+                      : "bg-danger/20 text-danger"
+                  )}
+                >
+                  {record.status === "turno_activo"
+                    ? "En turno"
+                    : record.status === "presente"
+                    ? "Completo"
+                    : "Ausente"}
+                </span>
+              </div>
+            ))}
           </div>
-        </div>
-      </section>
-    </main>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function CrearPedidoSection() {
+  const { products, addOrder } = useStore();
+  const [items, setItems] = useState<OrderItem[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("EFECTIVO");
+  const [phone, setPhone] = useState("");
+
+  const addItem = (product: typeof products[0]) => {
+    setItems((prev) => {
+      const existing = prev.find((i) => i.productId === product.id);
+      if (existing) {
+        return prev.map((i) =>
+          i.productId === product.id ? { ...i, qty: i.qty + 1 } : i
+        );
+      }
+      return [
+        ...prev,
+        {
+          productId: product.id,
+          name: product.name,
+          qty: 1,
+          unitPrice: product.priceMostrador,
+        },
+      ];
+    });
+  };
+
+  const removeItem = (productId: string) => {
+    setItems((prev) => {
+      const existing = prev.find((i) => i.productId === productId);
+      if (existing && existing.qty > 1) {
+        return prev.map((i) =>
+          i.productId === productId ? { ...i, qty: i.qty - 1 } : i
+        );
+      }
+      return prev.filter((i) => i.productId !== productId);
+    });
+  };
+
+  const total = items.reduce((s, i) => s + i.unitPrice * i.qty, 0);
+
+  const handleSubmit = () => {
+    if (items.length === 0) {
+      toast.error("Agrega al menos un producto");
+      return;
+    }
+    const order = addOrder(items, paymentMethod, "CAJA", phone || undefined);
+    toast.success(`Pedido #${order.ticket} creado`);
+    setItems([]);
+    setPhone("");
+  };
+
+  return (
+    <div className="max-w-5xl space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-bold">Crear Pedido</h1>
+        <p className="text-sm text-muted-foreground">
+          Toma una nueva orden para un cliente
+        </p>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+        {/* Products */}
+        <section className="rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 font-display text-lg font-bold">Productos</h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {products.map((product) => {
+              const qty = items.find((i) => i.productId === product.id)?.qty || 0;
+              return (
+                <div
+                  key={product.id}
+                  className="flex items-center gap-3 rounded-lg border border-border p-3"
+                >
+                  <div className="flex-1">
+                    <div className="font-medium">{product.name}</div>
+                    <div className="text-sm text-primary font-semibold">
+                      ${product.priceMostrador.toLocaleString("es-AR")}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => removeItem(product.id)}
+                      disabled={qty === 0}
+                      className="grid h-8 w-8 place-items-center rounded-md border border-border bg-background hover:bg-accent disabled:opacity-40"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="w-6 text-center font-semibold">{qty}</span>
+                    <button
+                      onClick={() => addItem(product)}
+                      className="grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground hover:opacity-90"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Order Summary */}
+        <section className="rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 font-display text-lg font-bold">Resumen del Pedido</h3>
+
+          {items.length === 0 ? (
+            <div className="rounded-lg border-2 border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+              Agrega productos al pedido
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {items.map((item) => (
+                <div key={item.productId} className="flex justify-between text-sm">
+                  <span>
+                    {item.qty}x {item.name}
+                  </span>
+                  <span className="font-semibold">
+                    ${(item.unitPrice * item.qty).toLocaleString("es-AR")}
+                  </span>
+                </div>
+              ))}
+              <div className="border-t border-border pt-2">
+                <div className="flex justify-between font-display text-xl font-bold">
+                  <span>Total</span>
+                  <span className="text-primary">${total.toLocaleString("es-AR")}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Teléfono (opcional)</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="341 555 1234"
+                className="h-10 w-full rounded-lg border border-border bg-background px-3"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Método de Pago</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3"
+              >
+                <option value="EFECTIVO">Efectivo</option>
+                <option value="TRANSFERENCIA">Transferencia</option>
+                <option value="DEBITO">Débito</option>
+                <option value="CREDITO">Crédito</option>
+              </select>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={items.length === 0}
+            className="mt-4 w-full rounded-lg bg-primary py-3 font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            Crear Pedido
+          </button>
+        </section>
+      </div>
+    </div>
   );
 }

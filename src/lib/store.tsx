@@ -15,6 +15,8 @@ import type {
   OrderStatus,
   PaymentMethod,
   Product,
+  Promocion,
+  AttendanceRecord,
 } from "./types";
 
 const INITIAL_PRODUCTS: Product[] = [
@@ -79,6 +81,87 @@ const INITIAL_EMPLOYEES: Employee[] = [
   { id: "e2", name: "Mateo Rossi", role: "Sushiman", active: true, checkedIn: true },
   { id: "e3", name: "Camila Torres", role: "Sushiman", active: true, checkedIn: false },
   { id: "e4", name: "Diego Pérez", role: "Cadete", active: false, checkedIn: false },
+];
+
+const INITIAL_PROMOCIONES: Promocion[] = [
+  {
+    id: "promo1",
+    nombre: "2x1 Martes de Sushi",
+    descuento: 50,
+    fechaInicio: "2026-05-01",
+    fechaFin: "2026-06-30",
+    activa: true,
+    descripcion: "Todos los martes, lleva 2 combos y paga solo 1",
+  },
+  {
+    id: "promo2",
+    nombre: "Descuento PedidosYa",
+    descuento: 15,
+    fechaInicio: "2026-05-15",
+    fechaFin: "2026-05-31",
+    activa: true,
+    descripcion: "15% de descuento en pedidos via PedidosYa",
+  },
+  {
+    id: "promo3",
+    nombre: "Happy Hour",
+    descuento: 20,
+    fechaInicio: "2026-04-01",
+    fechaFin: "2026-04-30",
+    activa: false,
+    descripcion: "20% off de 17 a 19hs en take away",
+  },
+];
+
+const today = new Date().toISOString().split("T")[0];
+const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+const INITIAL_ATTENDANCE: AttendanceRecord[] = [
+  {
+    id: "att1",
+    employeeId: "e1",
+    employeeName: "Lucía Fernández",
+    date: today,
+    checkIn: "09:00",
+    checkOut: null,
+    status: "turno_activo",
+  },
+  {
+    id: "att2",
+    employeeId: "e2",
+    employeeName: "Mateo Rossi",
+    date: today,
+    checkIn: "10:30",
+    checkOut: null,
+    status: "turno_activo",
+  },
+  {
+    id: "att3",
+    employeeId: "e1",
+    employeeName: "Lucía Fernández",
+    date: yesterday,
+    checkIn: "09:15",
+    checkOut: "18:00",
+    status: "presente",
+  },
+  {
+    id: "att4",
+    employeeId: "e2",
+    employeeName: "Mateo Rossi",
+    date: yesterday,
+    checkIn: "10:00",
+    checkOut: "19:30",
+    status: "presente",
+  },
+  {
+    id: "att5",
+    employeeId: "e3",
+    employeeName: "Camila Torres",
+    date: yesterday,
+    checkIn: null,
+    checkOut: null,
+    status: "ausente",
+  },
 ];
 
 function mkOrder(
@@ -167,6 +250,8 @@ interface StoreCtx {
   products: Product[];
   orders: Order[];
   employees: Employee[];
+  promociones: Promocion[];
+  attendance: AttendanceRecord[];
   nextTicket: number;
   addOrder: (
     items: OrderItem[],
@@ -182,6 +267,11 @@ interface StoreCtx {
   addProduct: (p: Omit<Product, "id">) => void;
   removeProduct: (id: string) => void;
   applyMassIncrease: (percent: number) => void;
+  addPromocion: (p: Omit<Promocion, "id">) => void;
+  updatePromocion: (id: string, patch: Partial<Promocion>) => void;
+  removePromocion: (id: string) => void;
+  togglePromocion: (id: string) => void;
+  recordAttendance: (employeeId: string, type: "entrada" | "salida") => void;
   now: number;
 }
 
@@ -191,6 +281,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [orders, setOrders] = useState<Order[]>([...INITIAL_ORDERS, ...HISTORY_ORDERS]);
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
+  const [promociones, setPromociones] = useState<Promocion[]>(INITIAL_PROMOCIONES);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE);
   const [nextTicket, setNextTicket] = useState(1005);
   const [now, setNow] = useState(Date.now());
 
@@ -274,11 +366,81 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const addPromocion = useCallback((p: Omit<Promocion, "id">) => {
+    setPromociones((ps) => [...ps, { ...p, id: crypto.randomUUID() }]);
+  }, []);
+
+  const updatePromocion = useCallback((id: string, patch: Partial<Promocion>) => {
+    setPromociones((ps) => ps.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  }, []);
+
+  const removePromocion = useCallback((id: string) => {
+    setPromociones((ps) => ps.filter((p) => p.id !== id));
+  }, []);
+
+  const togglePromocion = useCallback((id: string) => {
+    setPromociones((ps) =>
+      ps.map((p) => (p.id === id ? { ...p, activa: !p.activa } : p))
+    );
+  }, []);
+
+  const recordAttendance = useCallback((employeeId: string, type: "entrada" | "salida") => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const timeNow = new Date().toLocaleTimeString("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    setAttendance((prev) => {
+      const existingRecord = prev.find(
+        (a) => a.employeeId === employeeId && a.date === todayStr
+      );
+
+      if (type === "entrada") {
+        if (existingRecord?.checkIn) return prev;
+        const employee = employees.find((e) => e.id === employeeId);
+        if (!employee) return prev;
+
+        if (existingRecord) {
+          return prev.map((a) =>
+            a.id === existingRecord.id
+              ? { ...a, checkIn: timeNow, status: "turno_activo" as const }
+              : a
+          );
+        } else {
+          const newRecord: AttendanceRecord = {
+            id: crypto.randomUUID(),
+            employeeId,
+            employeeName: employee.name,
+            date: todayStr,
+            checkIn: timeNow,
+            checkOut: null,
+            status: "turno_activo",
+          };
+          return [newRecord, ...prev];
+        }
+      } else {
+        if (!existingRecord || !existingRecord.checkIn || existingRecord.checkOut) return prev;
+        return prev.map((a) =>
+          a.id === existingRecord.id
+            ? { ...a, checkOut: timeNow, status: "presente" as const }
+            : a
+        );
+      }
+    });
+
+    if (type === "entrada" || type === "salida") {
+      toggleCheckIn(employeeId);
+    }
+  }, [employees, toggleCheckIn]);
+
   const value = useMemo<StoreCtx>(
     () => ({
       products,
       orders,
       employees,
+      promociones,
+      attendance,
       nextTicket,
       addOrder,
       advanceOrder,
@@ -289,12 +451,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addProduct,
       removeProduct,
       applyMassIncrease,
+      addPromocion,
+      updatePromocion,
+      removePromocion,
+      togglePromocion,
+      recordAttendance,
       now,
     }),
     [
       products,
       orders,
       employees,
+      promociones,
+      attendance,
       nextTicket,
       addOrder,
       advanceOrder,
@@ -305,6 +474,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addProduct,
       removeProduct,
       applyMassIncrease,
+      addPromocion,
+      updatePromocion,
+      removePromocion,
+      togglePromocion,
+      recordAttendance,
       now,
     ],
   );

@@ -61,3 +61,23 @@ export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   CREDITO: "Crédito",
   PEDIDOS_YA_ONLINE: "PedidosYa Online",
 };
+
+export interface Promocion {
+  id: string;
+  nombre: string;
+  descuento: number;
+  fechaInicio: string;
+  fechaFin: string;
+  activa: boolean;
+  descripcion?: string;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  date: string;
+  checkIn: string | null;
+  checkOut: string | null;
+  status: "presente" | "ausente" | "turno_activo";
+}

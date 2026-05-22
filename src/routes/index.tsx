@@ -1,6 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { MapPin, Clock, Phone, ShoppingBag, Star } from "lucide-react";
+import { useState } from "react";
+import { MapPin, Clock, Phone, ShoppingBag, Star, Menu, X, Percent, Tag } from "lucide-react";
 import { useStore } from "@/lib/store";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -17,8 +25,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
-  const { products } = useStore();
+  const { products, promociones } = useStore();
   const combos = products.filter((p) => p.category === "Combos" || p.category === "Veggie");
+  const activePromociones = promociones.filter((p) => p.activa);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <main className="bg-background">
@@ -52,12 +62,13 @@ function Landing() {
                 <ShoppingBag className="h-5 w-5" />
                 Pedir por PedidosYa
               </a>
-              <a
-                href="#combos"
+              <button
+                onClick={() => setMenuOpen(true)}
                 className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-6 py-3 font-semibold hover:bg-accent"
               >
-                Ver combos
-              </a>
+                <Menu className="h-5 w-5" />
+                Ver carta completa
+              </button>
             </div>
             <dl className="mt-10 grid max-w-md grid-cols-3 gap-6 border-t border-border pt-6 text-sm">
               <div>
@@ -98,6 +109,46 @@ function Landing() {
         </div>
       </section>
 
+      {/* PROMOCIONES ACTIVAS */}
+      {activePromociones.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+          <div className="mb-8">
+            <span className="text-xs font-medium uppercase tracking-widest text-primary">
+              Ofertas especiales
+            </span>
+            <h2 className="mt-2 font-display text-4xl font-bold">Promociones Activas</h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {activePromociones.map((promo) => (
+              <article
+                key={promo.id}
+                className="group overflow-hidden rounded-2xl border-2 border-primary/20 bg-[oklch(0.97_0.02_20)] p-6 transition-all hover:border-primary/40 hover:shadow-lg dark:bg-[oklch(0.25_0.03_20)]"
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+                    <Percent className="h-3.5 w-3.5" />
+                    {promo.descuento}% OFF
+                  </span>
+                  <Tag className="h-5 w-5 text-primary/60" />
+                </div>
+                <h3 className="font-display text-xl font-bold text-foreground">{promo.nombre}</h3>
+                {promo.descripcion && (
+                  <p className="mt-2 text-sm text-muted-foreground">{promo.descripcion}</p>
+                )}
+                <div className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
+                  Válido hasta{" "}
+                  {new Date(promo.fechaFin).toLocaleDateString("es-AR", {
+                    day: "2-digit",
+                    month: "long",
+                  })}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* COMBOS */}
       <section id="combos" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
         <div className="mb-10 flex items-end justify-between">
@@ -107,12 +158,12 @@ function Landing() {
             </span>
             <h2 className="mt-2 font-display text-4xl font-bold">Combos destacados</h2>
           </div>
-          <Link
-            to="/caja"
+          <button
+            onClick={() => setMenuOpen(true)}
             className="hidden text-sm font-medium text-primary hover:underline md:inline"
           >
             Ver carta completa →
-          </Link>
+          </button>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {combos.map((c, i) => (
@@ -238,9 +289,53 @@ function Landing() {
       <footer className="border-t border-border bg-card">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:px-6">
           <div>© {new Date().getFullYear()} Rosario Sushi · Todos los derechos reservados.</div>
-          <Link to="/caja" className="hover:text-foreground">Acceso empleados →</Link>
+          <Link to="/empleados" className="hover:text-foreground">Acceso empleados →</Link>
         </div>
       </footer>
+
+      {/* Menu Drawer */}
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent side="right" className="w-full max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="font-display text-2xl">Nuestra Carta</SheetTitle>
+            <SheetDescription>
+              Todos nuestros productos y combos disponibles
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-6">
+            {["Combos", "Veggie", "Rolls", "Bebidas"].map((category) => {
+              const categoryProducts = products.filter((p) => p.category === category);
+              if (categoryProducts.length === 0) return null;
+              return (
+                <div key={category}>
+                  <h3 className="mb-3 font-display text-lg font-bold text-primary">{category}</h3>
+                  <div className="space-y-3">
+                    {categoryProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        className="flex items-start justify-between rounded-lg border border-border bg-card p-4"
+                      >
+                        <div className="flex-1">
+                          <div className="font-semibold">{product.name}</div>
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            {product.description}
+                          </div>
+                        </div>
+                        <div className="ml-4 text-right">
+                          <div className="font-display text-lg font-bold text-primary">
+                            ${product.priceMostrador.toLocaleString("es-AR")}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Mostrador</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
     </main>
   );
 }

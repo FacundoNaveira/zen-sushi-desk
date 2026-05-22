@@ -1,20 +1,29 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Moon, Sun, Utensils, ClipboardList, Store, LayoutDashboard, Home, Tag, Users } from "lucide-react";
+import { Moon, Sun, Utensils, ClipboardList, LayoutDashboard, Home, Users } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 const links = [
   { to: "/", label: "Inicio", icon: Home },
-  { to: "/caja", label: "Caja", icon: Store },
-  { to: "/pedidos", label: "Pedidos", icon: ClipboardList },
-  { to: "/promociones", label: "Promociones", icon: Tag },
   { to: "/empleados", label: "Empleados", icon: Users },
+  { to: "/pedidos", label: "Pedidos", icon: ClipboardList },
   { to: "/admin", label: "Admin", icon: LayoutDashboard },
 ];
 
 export function Nav() {
   const { theme, toggle } = useTheme();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // Don't show nav on internal module pages (they have their own sidebar)
+  const isInternalPage = 
+    (pathname.startsWith("/empleados") && pathname !== "/empleados") ||
+    (pathname.startsWith("/admin") && pathname !== "/admin") ||
+    (pathname.startsWith("/pedidos") && pathname !== "/pedidos");
+
+  // Hide nav on module pages that use AppLayout
+  if (pathname.startsWith("/empleados") || pathname.startsWith("/admin") || pathname.startsWith("/pedidos")) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
@@ -32,7 +41,7 @@ export function Nav() {
         </Link>
         <nav className="ml-4 hidden gap-1 md:flex">
           {links.map((l) => {
-            const active = pathname === l.to;
+            const active = pathname === l.to || pathname.startsWith(l.to + "/");
             const Icon = l.icon;
             return (
               <Link
@@ -54,7 +63,7 @@ export function Nav() {
         <div className="ml-auto flex items-center gap-2">
           <nav className="flex gap-1 md:hidden">
             {links.map((l) => {
-              const active = pathname === l.to;
+              const active = pathname === l.to || pathname.startsWith(l.to + "/");
               const Icon = l.icon;
               return (
                 <Link

@@ -9,18 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PromocionesRouteImport } from './routes/promociones'
 import { Route as PedidosRouteImport } from './routes/pedidos'
 import { Route as EmpleadosRouteImport } from './routes/empleados'
 import { Route as CajaRouteImport } from './routes/caja'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
-const PromocionesRoute = PromocionesRouteImport.update({
-  id: '/promociones',
-  path: '/promociones',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PedidosRoute = PedidosRouteImport.update({
   id: '/pedidos',
   path: '/pedidos',
@@ -53,7 +47,6 @@ export interface FileRoutesByFullPath {
   '/caja': typeof CajaRoute
   '/empleados': typeof EmpleadosRoute
   '/pedidos': typeof PedidosRoute
-  '/promociones': typeof PromocionesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,7 +54,6 @@ export interface FileRoutesByTo {
   '/caja': typeof CajaRoute
   '/empleados': typeof EmpleadosRoute
   '/pedidos': typeof PedidosRoute
-  '/promociones': typeof PromocionesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,27 +62,13 @@ export interface FileRoutesById {
   '/caja': typeof CajaRoute
   '/empleados': typeof EmpleadosRoute
   '/pedidos': typeof PedidosRoute
-  '/promociones': typeof PromocionesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/admin'
-    | '/caja'
-    | '/empleados'
-    | '/pedidos'
-    | '/promociones'
+  fullPaths: '/' | '/admin' | '/caja' | '/empleados' | '/pedidos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/caja' | '/empleados' | '/pedidos' | '/promociones'
-  id:
-    | '__root__'
-    | '/'
-    | '/admin'
-    | '/caja'
-    | '/empleados'
-    | '/pedidos'
-    | '/promociones'
+  to: '/' | '/admin' | '/caja' | '/empleados' | '/pedidos'
+  id: '__root__' | '/' | '/admin' | '/caja' | '/empleados' | '/pedidos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -99,18 +77,10 @@ export interface RootRouteChildren {
   CajaRoute: typeof CajaRoute
   EmpleadosRoute: typeof EmpleadosRoute
   PedidosRoute: typeof PedidosRoute
-  PromocionesRoute: typeof PromocionesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/promociones': {
-      id: '/promociones'
-      path: '/promociones'
-      fullPath: '/promociones'
-      preLoaderRoute: typeof PromocionesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/pedidos': {
       id: '/pedidos'
       path: '/pedidos'
@@ -155,7 +125,6 @@ const rootRouteChildren: RootRouteChildren = {
   CajaRoute: CajaRoute,
   EmpleadosRoute: EmpleadosRoute,
   PedidosRoute: PedidosRoute,
-  PromocionesRoute: PromocionesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

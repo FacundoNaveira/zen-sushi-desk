@@ -4,7 +4,7 @@ import { ChevronRight, Clock, History, ListOrdered } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { Order, OrderStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AppLayout } from "@/components/app-layout";
 import {
   Pagination,
   PaginationContent,
@@ -18,6 +18,11 @@ export const Route = createFileRoute("/pedidos")({
   component: PedidosPage,
   head: () => ({ meta: [{ title: "Pedidos · Rosario Sushi" }] }),
 });
+
+const SIDEBAR_ITEMS = [
+  { to: "/pedidos", label: "Cola de Pedidos", icon: ListOrdered },
+  { to: "/pedidos/historico", label: "Historial", icon: History },
+];
 
 const NEXT_LABEL: Record<OrderStatus, string> = {
   NUEVO: "Tomar pedido",
@@ -121,7 +126,7 @@ function PedidosRecientes() {
   const active = orders.filter((o) => o.status !== "ENTREGADO");
   const columns: { title: string; status: OrderStatus }[] = [
     { title: "Nuevos", status: "NUEVO" },
-    { title: "En preparacion", status: "PENDIENTE" },
+    { title: "En preparación", status: "PENDIENTE" },
     { title: "Listos", status: "LISTO" },
   ];
 
@@ -129,7 +134,7 @@ function PedidosRecientes() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
-          {active.length} pedidos activos · Actualiza automaticamente
+          {active.length} pedidos activos · Actualiza automáticamente
         </p>
         <div className="flex gap-2 text-xs">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-3 py-1">
@@ -217,7 +222,7 @@ function HistoricoPedidos() {
                 <th className="px-4 py-3">Origen</th>
                 <th className="px-4 py-3">Items</th>
                 <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3">Metodo Pago</th>
+                <th className="px-4 py-3">Método Pago</th>
                 <th className="px-4 py-3">Fecha/Hora</th>
               </tr>
             </thead>
@@ -312,35 +317,85 @@ function HistoricoPedidos() {
 }
 
 function PedidosPage() {
+  const [activeSection, setActiveSection] = useState<"cola" | "historico">("cola");
+
   return (
-    <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6">
-      <div className="mb-6">
-        <h1 className="font-display text-3xl font-bold">Pedidos</h1>
-        <p className="text-sm text-muted-foreground">
-          Gestion de pedidos activos e historico
-        </p>
+    <AppLayout sidebarItems={SIDEBAR_ITEMS} title="Gestión de Pedidos" subtitle="Cocina">
+      <div className="flex h-[calc(100vh-3.5rem)]">
+        {/* Internal sidebar */}
+        <div className="hidden w-56 flex-shrink-0 border-r border-border bg-card/50 p-4 md:block">
+          <nav className="space-y-1">
+            <button
+              onClick={() => setActiveSection("cola")}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                activeSection === "cola"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-accent"
+              )}
+            >
+              <ListOrdered className="h-4 w-4" />
+              Cola de Prioridad
+            </button>
+            <button
+              onClick={() => setActiveSection("historico")}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                activeSection === "historico"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-accent"
+              )}
+            >
+              <History className="h-4 w-4" />
+              Historial de Pedidos
+            </button>
+          </nav>
+        </div>
+
+        {/* Mobile tabs */}
+        <div className="flex w-full flex-col">
+          <div className="flex border-b border-border md:hidden">
+            <button
+              onClick={() => setActiveSection("cola")}
+              className={cn(
+                "flex-1 px-4 py-3 text-sm font-medium transition-colors",
+                activeSection === "cola"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground"
+              )}
+            >
+              Cola de Prioridad
+            </button>
+            <button
+              onClick={() => setActiveSection("historico")}
+              className={cn(
+                "flex-1 px-4 py-3 text-sm font-medium transition-colors",
+                activeSection === "historico"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground"
+              )}
+            >
+              Historial
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="mb-6">
+              <h1 className="font-display text-2xl font-bold">
+                {activeSection === "cola" ? "Cola de Prioridad" : "Historial de Pedidos"}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {activeSection === "cola"
+                  ? "Pedidos ordenados por hora de llegada"
+                  : "Pedidos completados"}
+              </p>
+            </div>
+
+            {activeSection === "cola" ? <PedidosRecientes /> : <HistoricoPedidos />}
+          </div>
+        </div>
       </div>
-
-      <Tabs defaultValue="recientes" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="recientes" className="gap-2">
-            <ListOrdered className="h-4 w-4" />
-            Pedidos Recientes
-          </TabsTrigger>
-          <TabsTrigger value="historico" className="gap-2">
-            <History className="h-4 w-4" />
-            Historico
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="recientes">
-          <PedidosRecientes />
-        </TabsContent>
-
-        <TabsContent value="historico">
-          <HistoricoPedidos />
-        </TabsContent>
-      </Tabs>
-    </main>
+    </AppLayout>
   );
 }

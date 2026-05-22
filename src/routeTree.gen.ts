@@ -13,7 +13,7 @@ import { Route as PedidosRouteImport } from './routes/pedidos'
 import { Route as EmpleadosRouteImport } from './routes/empleados'
 import { Route as CajaRouteImport } from './routes/caja'
 import { Route as AdminRouteImport } from './routes/admin'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as IndexRouteImport } from '../index'
 
 const PedidosRoute = PedidosRouteImport.update({
   id: '/pedidos',
